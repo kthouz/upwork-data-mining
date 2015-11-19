@@ -152,6 +152,9 @@ def designdb(cur):
 def bypassNone(x,key):
     return None if x == None else x.get(key)
 
+def nonetozero(x,key):
+    return 0 if x.get(key) == None else x.get(key)
+
 def insertData(cur, conn, d1, d2):
     """
     This function works exclusively with json downloaded from upwork.
@@ -211,12 +214,14 @@ def insertData(cur, conn, d1, d2):
                              l.get('as_ciphertext_opening_recno'),
                              l.get('as_agency_name'),
                              l.get('as_opening_title'),
-                             l.get('as_rate'),
-                             l.get('as_total_charge'),
+                             nonetozero(l,'as_rate'),
+                             #l.get('as_rate'),
+                             nonetozero(l,'as_total_charge'),
+                             #l.get('as_total_charge'),
                              l.get('as_total_hours'),
                              bypassNone(l.get('feedback'),'score'),
                              bypassNone(l.get('feedback'),'comment'),
-                             l.get('as_from'),
+                             l.get('as_from_full'),
                              l.get('as_to'))
 
                     cur.execute('INSERT OR IGNORE INTO uAssignments('
@@ -229,12 +234,14 @@ def insertData(cur, conn, d1, d2):
                          a.get('as_ciphertext_opening_recno'),
                          a.get('as_agency_name'),
                          a.get('as_opening_title'),
-                         a.get('as_rate'),
-                         a.get('as_total_charge'),
+                         nonetozero(a,'as_rate'),
+                         #l.get('as_rate'),
+                         nonetozero(a,'as_total_charge'),
+                         #a.get('as_total_charge'),
                          a.get('as_total_hours'),
                          bypassNone(a.get('feedback'),'score'),
                          bypassNone(a.get('feedback'),'comment'),
-                         a.get('as_from'),
+                         a.get('as_from_full'),
                          a.get('as_to'))
                 cur.execute('INSERT OR IGNORE INTO uAssignments('
                             'id, userId, uwAssignmentId, agencyName, openingTitle, '
@@ -286,8 +293,8 @@ def insertData(cur, conn, d1, d2):
                                 '(NULL,?,?,?,?,?,?,?,?)', fData)
 
     #insert into education table
-    if d2.get('education') != None:
-        if type(d2['education']) == type ([]):
+    if d2.get('education') != '':
+        if type(d2['education'].get('institution')) == type ([]):
             for institution in d2['education'].get('institution'):
                 cur.execute('INSERT OR IGNORE INTO uEducation('
                             'id, userId, area, degree, school, '
@@ -300,8 +307,8 @@ def insertData(cur, conn, d1, d2):
                              institution.get('ed_from'),
                              institution.get('ed_to'),
                              institution.get('ed_comment')))
-        if type(d2['education']) == type({}):
-            institution = d2['education']
+        if type(d2['education'].get('institution')) == type({}):
+            institution = d2['education']['institution']
             cur.execute('INSERT OR IGNORE INTO uEducation('
                         'id, userId, area, degree, school, '
                         'asFrom, asTo, comment) VALUES '
@@ -324,7 +331,7 @@ def insertData(cur, conn, d1, d2):
                             '(NULL,?,?,?,?,?,?,?,?)',
                             (d1.get('id'),
                              exam.get('ts_id'),
-                             exam.get('ts_name'),
+                             exam.get('ts_name_raw'),
                              exam.get('ts_pass'),
                              exam.get('ts_score'),
                              exam.get('ts_percentile'),
@@ -338,7 +345,7 @@ def insertData(cur, conn, d1, d2):
                         '(NULL,?,?,?,?,?,?,?,?)',
                         (d1.get('id'),
                          exam.get('ts_id'),
-                         exam.get('ts_name'),
+                         exam.get('ts_name_raw'),
                          exam.get('ts_pass'),
                          exam.get('ts_score'),
                          exam.get('ts_percentile'),
@@ -424,13 +431,14 @@ if __name__ == '__main__':
     
     directory = '/Users/cgirabawe/SideProjects/test'
     directory = '/Users/cgirabawe/SideProjects/upwork_data_mining/upwork_project'
+    directory = '/Users/cgirabawe/SideProjects/upwork_data_mining'
     os.chdir(directory)
     conn = sqlite3.connect('../upworkdb.db')
     cur = conn.cursor()
 
     profiles = glob.glob(directory+'/data/profiles/*.json')
     details = glob.glob(directory+'/data/details/*.json')
-    redesign = False
+    redesign = True
     if redesign: #True/False to redesign database if necessary
         designdb(cur)
 
@@ -439,10 +447,10 @@ if __name__ == '__main__':
         f = os.path.basename(detail)
         d1 = uw.loadJson(directory+'/data/profiles/'+f)
         d2 = uw.loadJson(directory+'/data/details/'+f)
-        try:
-            insertData(cur,conn,d1,d2)
-        except:
-            uw.saveJson([],directory+'/skipped/'+f)
+        #try:
+        insertData(cur,conn,d1,d2)
+        #except:
+#            uw.saveJson([],directory+'/skipped/'+f)
         k+=1
         if k%10000 == 0: print k
     closedb(cur,conn)
